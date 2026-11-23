@@ -9,6 +9,7 @@
 ![Vue SFC](https://img.shields.io/badge/component-Vue%20SFC-42b883)
 ![Serverless](https://img.shields.io/badge/AI-transweb.cn%20serverless-2ea44f)
 ![LeaferJS](https://img.shields.io/badge/LeaferJS-2.3.4-6f5cff)
+![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f)
 
 ---
 
@@ -117,6 +118,7 @@ LeaferJS-poster/
 ├── appCode.vue      # 前端 AI 结果渲染组件（Vue SFC，基于 transweb 前端运行时）
 ├── appPage.html     # 本地浏览器入口（iframe 加载在线应用）
 ├── manifest.json    # 应用元数据与来源
+├── LICENSE          # MIT 许可证
 └── README.md        # 本文件
 ```
 
@@ -283,4 +285,16 @@ https://unpkg.com/leafer-ui@2.3.4/dist/web.min.js
 
 ## 许可
 
-本仓库暂未指定开源许可证。提示词文本、前端组件与生成代码版权归各自作者所有；使用前请自行确认授权范围。
+本项目采用 [MIT License](./LICENSE)，与所引用的前端资源保持一致。
+
+| 资源 | 许可证 | 用途 |
+| --- | --- | --- |
+| [LeaferJS](https://github.com/leaferjs/leafer-ui) | MIT | 海报画布渲染引擎 |
+| [qr-code-styling](https://github.com/kozakdenys/qr-code-styling) | MIT | `qr` 模式的二维码生成 |
+| Vue / Element 组件库 / [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) | MIT | 前端运行时与界面样式 |
+
+`transweb.cn` 的 serverless 服务不在本仓库内，按其服务条款使用；本仓库的 MIT 许可仅覆盖仓库中的提示词、组件与页面源码。
+
+Copyright (c) 2026 liuwenjin。
+
+再分发时请保留所引用资源的版权与许可声明；生成内容的许可由使用者自行决定。
