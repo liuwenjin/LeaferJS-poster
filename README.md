@@ -1,41 +1,124 @@
 # LeaferJS Poster
 
-**可独立运行的社交货币海报生成器**
+**可独立运行的网页版海报**
 
-> 一段作品描述，得到一张 **比例精确、可直接发布** 的平面海报。
-> 自带任意大模型即可运行；产物是零依赖的单文件 HTML，画布由 LeaferJS 程序化绘制。
+> 纯前端 + AIGC：输入一段作品描述，生成一张比例精确、可直接发布的社交货币海报。
+> 仓库包含 AIGC 结构化提示词、前端结果渲染组件与本地网页入口；AI 推理由 transweb.cn 的 serverless 服务提供。
 
-![BYOM](https://img.shields.io/badge/model-any%20LLM-6f5cff)
+![Pure Frontend](https://img.shields.io/badge/architecture-pure%20frontend-6f5cff)
+![Vue SFC](https://img.shields.io/badge/component-Vue%20SFC-42b883)
+![Serverless](https://img.shields.io/badge/AI-transweb.cn%20serverless-2ea44f)
 ![LeaferJS](https://img.shields.io/badge/LeaferJS-2.3.4-6f5cff)
-![Single File](https://img.shields.io/badge/output-single--file%20HTML-2ea44f)
-![Ratio](https://img.shields.io/badge/ratio-3%3A4%20default-6f5cff)
 
 ---
 
-## 简介
+## 项目简介
 
-**LeaferJS Poster 是一个可独立运行的 AI 工具**，不是某个平台的插件，也不需要登录任何账号。
+LeaferJS Poster 是一个**可独立运行的网页版海报生成器**，也是一个纯前端项目。
 
-它的全部能力来自一份系统提示词 [`appPrompt.md`](./appPrompt.md)：把这份提示词交给任意支持长输出的 LLM，模型就会把你的作品描述变成一张社交货币海报，并以严格 JSON 交付。取 JSON 里的 `code` 字段保存为 `.html`，打开就是完整画面。
+仓库内没有自建后端、没有数据库、没有构建配置，也不需要在本地安装依赖。打开 [`appPage.html`](./appPage.html)，输入作品描述，前端会把用户输入与当前应用标识提交给 **transweb.cn 的 serverless 服务**；服务按 AIGC 结构化提示词调用大模型，流式返回 JSON，前端组件解析后把结果渲染成一张按比例排版的静态海报，并支持版本管理、编辑与导出。
+
+一句话概括：
 
 ```text
-作品描述 ──► 任意 LLM ──► JSON ──► poster.html ──► 浏览器截图
-                ▲
-          appPrompt.md
+本地网页（纯前端） ──► transweb.cn serverless ──► 大模型 ──► 结构化 JSON ──► 前端渲染
 ```
 
-工具链上没有隐藏服务：没有后端、没有模板库、没有构建步骤。你需要的只是一个模型端点（云端 API 或本地模型）和一个浏览器。
+## 项目组成
 
-## 为什么它可以独立运行
+| 组成 | 文件 | 职责 |
+| --- | --- | --- |
+| **AIGC 结构化提示词** | [`appPrompt.md`](./appPrompt.md) | 约束模型的角色、交付格式、版式系统、字体规范、链接判定与验收 |
+| **前端 AI 结果渲染组件** | [`appCode.vue`](./appCode.vue) | Vue 单文件组件：输入向导、流式状态、海报渲染、版本历史、编辑与导出 |
+| **本地浏览器网页** | [`appPage.html`](./appPage.html) | 本地入口页，打开即用；以 iframe 加载 transweb.cn 上的同款应用 |
+| **元数据** | [`manifest.json`](./manifest.json) | 应用来源、创建时间与文件清单 |
+
+## 架构与数据流
+
+```text
+┌────────────────────────── 浏览器（纯前端） ──────────────────────────┐
+│  appPage.html（本地入口）                                            │
+│        │ iframe                                                      │
+│        ▼                                                             │
+│  appCode.vue（Vue SFC）                                              │
+│   ├─ 输入作品描述 / 比例 / 链接                                      │
+│   ├─ 提交 context + documentId                                       │
+│   ├─ 接收流式结果、解析 JSON                                         │
+│   └─ 渲染海报 / 版本 / 编辑 / 导出                                   │
+└───────────────┬──────────────────────────────────────────────────────┘
+                │ HTTPS 流式请求
+                ▼
+   transweb.cn serverless（提示词编排 / 模型调用 / 结果存储 / 登录与额度）
+                │
+                ▼
+             大模型 → 结构化 JSON
+```
+
+### 提示词与前端的关系
+
+- `appPrompt.md` 是本项目的 **AIGC 结构化提示词**，也是模型输出必须遵守的契约。
+- 在线应用按 `documentId` 绑定平台侧的提示词配置；前端提交的是用户输入（`context`）与应用标识，而不是每次都上传整份提示词。
+- 修改仓库里的 `appPrompt.md` 不会自动改变线上应用；需要在平台更新提示词配置，或把提示词接入你自建的 serverless 服务。
+
+## 为什么是「纯前端 + serverless」
 
 | 维度 | 说明 |
 | --- | --- |
-| **模型自由** | OpenAI、DeepSeek、Claude、Gemini、Ollama、vLLM 均可；只要支持 system prompt 与长输出 |
-| **无平台锁定** | 除 `qr` 模式加载公开的 `qr-code-styling` 脚本外，不调用任何私有接口；该脚本可自托管替换，平台页面只是参考实现 |
-| **本地执行** | 提示词、调用脚本、产物都在你的机器上；使用本地模型时可完全离线生成 |
-| **产物可移植** | 输出是单个 `.html` 文件，可双击打开、静态托管或直接截图分发 |
-| **比例可承诺** | 需求写 4:5 就是 4:5，画布比例误差 ≤ 1 设计单位，不偷偷回退默认值 |
-| **过程可审计** | 提示词、版式规则和生成结果全部可见，可 diff、可二次修改 |
+| **无自建后端** | 仓库只有 HTML、Vue SFC、Markdown 与 JSON，没有服务端代码 |
+| **无需构建** | 没有 `package.json`、打包器或编译步骤；打开网页即可使用 |
+| **前端负责交互与渲染** | 输入、流式状态、JSON 解析、海报渲染、版本与导出都在浏览器完成 |
+| **AI 在 serverless** | 模型调用、流式返回、结果存储由 transweb.cn 承担，前端不持有模型密钥 |
+| **静态可托管** | 入口页可放在任意静态服务器、对象存储或本地目录 |
+
+**独立运行的含义**：不依赖本地开发环境、不需要部署自己的后端、不需要安装 npm 包。它不是「离线运行」，生成能力依赖 transweb.cn 的 serverless 服务与网络。
+
+## 运行方式
+
+### 方式一：直接打开（最简单）
+
+双击 [`appPage.html`](./appPage.html)，或在浏览器里打开它。页面会以 iframe 加载 transweb.cn 上的同款应用。
+
+### 方式二：本地静态服务（推荐）
+
+某些浏览器对 `file://` 下的 iframe、剪贴板或跨域行为有限制，建议起一个静态服务：
+
+```bash
+# 在仓库根目录
+python3 -m http.server 8080
+# 打开 http://localhost:8080/appPage.html
+```
+
+或者使用任意静态服务器（Nginx、Caddy、VS Code Live Server 等）。
+
+### 运行前提
+
+- 能访问 `transweb.cn`（AI 生成与结果存储依赖该服务）
+- 现代浏览器（Chrome、Edge、Safari、Firefox）
+- 无需 Node.js、npm、构建工具
+- 登录状态与调用额度以 transweb.cn 当前策略为准
+
+## serverless 依赖说明
+
+| 能力 | 是否在仓库内 | 说明 |
+| --- | --- | --- |
+| 模型调用 | 否 | 由 transweb.cn serverless 调用大模型 |
+| 提示词编排 | 否 | 平台按 `documentId` 绑定 AIGC 提示词 |
+| 流式返回 | 否 | 前端通过 `aigcInterface` 接收流式结果 |
+| 结果存储与版本 | 否 | 历史版本由 transweb.cn 保存 |
+| 输入、解析、渲染、导出 | 是 | `appCode.vue` 在浏览器内完成 |
+
+前端不保存模型 API Key，也不直接连接模型服务；所有生成请求都经过 transweb.cn。服务不可用、未登录或额度不足时，页面会给出对应提示。
+
+## 目录结构
+
+```text
+LeaferJS-poster/
+├── appPrompt.md     # AIGC 结构化提示词（模型契约）
+├── appCode.vue      # 前端 AI 结果渲染组件（Vue SFC，基于 transweb 前端运行时）
+├── appPage.html     # 本地浏览器入口（iframe 加载在线应用）
+├── manifest.json    # 应用元数据与来源
+└── README.md        # 本文件
+```
 
 ## 它生成什么
 
@@ -48,95 +131,14 @@
 - **四种风格**：几何构成、编辑极简、瑞士国际主义、复古印刷；四选一，不混用
 - **链接展签**：需求含链接时自动判定 `qr` / `hero` / `slot`，生成可扫描二维码或图片展签
 - **文字清晰度**：不缩字、不缩放文字层、不用小画布放大；`pixelRatio: 3`
-- **静态作品**：无动画、无时间轴、无页面级 UI，导出交给查看器截图
+- **静态作品**：无动画、无时间轴、无页面级 UI，导出交给截图完成
 - **零外部素材**：只用基础图形与系统字体，质感程序化生成
 
-## 快速开始（独立运行）
+## AIGC 结构化提示词
 
-### 前置条件
+[`appPrompt.md`](./appPrompt.md) 把模型设定为「七人平面视觉设计团队」，并强制约束输出。核心协议如下。
 
-- Node.js 18+（内置 `fetch`，无需 `npm install`）
-- 一个 OpenAI 兼容的模型端点；建议单次输出上限 **≥ 8K tokens**
-
-### 1. 获取工具
-
-```bash
-git clone https://github.com/liuwenjin/LeaferJS-poster.git
-cd LeaferJS-poster
-```
-
-### 2. 创建本地运行器
-
-把下面的代码保存为 `run.mjs`（放在仓库根目录）：
-
-> 不想用 Node.js？任何 HTTP 客户端都可以：把 `appPrompt.md` 作为 system message、需求作为 user message 发送，再解析返回的 JSON。
-
-```js
-// run.mjs — Node.js 18+，零依赖
-import fs from 'node:fs';
-
-const system = fs.readFileSync('appPrompt.md', 'utf8');
-const idea = process.argv.slice(2).join(' ') || '为「手写体生成器」做一张 4:5 的海报，链接 https://example.com/writing';
-const base = (process.env.LLM_BASE_URL || 'https://api.deepseek.com').replace(/\/$/, '');
-
-const res = await fetch(`${base}/chat/completions`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${process.env.LLM_API_KEY}`
-  },
-  body: JSON.stringify({
-    model: process.env.LLM_MODEL || 'deepseek-chat',
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: idea }
-    ],
-    max_tokens: Number(process.env.LLM_MAX_TOKENS || 8000),
-    temperature: 0.7
-  })
-});
-
-if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-const body = await res.json();
-if (body.choices?.[0]?.finish_reason === 'length') {
-  throw new Error('输出被截断：请提高 LLM_MAX_TOKENS，或换用输出上限更大的模型');
-}
-
-const raw = body.choices[0].message.content.trim()
-  .replace(/^`{3}(?:json)?\s*/, '')
-  .replace(/\s*`{3}$/, '');
-const data = JSON.parse(raw);
-fs.writeFileSync('poster.html', data.code, 'utf8');
-console.log(`✓ ${data.title} → poster.html（${data.width}×${data.height}）`);
-```
-
-### 3. 生成并查看
-
-```bash
-LLM_API_KEY=sk-... node run.mjs "为「手写体生成器」做一张 4:5 的小红书海报，作品是把一句话变成书法，链接是 https://example.com/writing"
-open poster.html     # macOS；其他系统直接双击
-```
-
-海报会按比例完整居中显示。用截图工具截取画布区域即可得到成品；`pixelRatio: 3` 已按短边 900 设计单位输出，足够社媒与常规印刷。
-
-### 4. 换一个模型
-
-| 服务 | `LLM_BASE_URL` | `LLM_MODEL` 示例 |
-| --- | --- | --- |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4.1` |
-| DeepSeek | `https://api.deepseek.com` | `deepseek-chat` |
-| Ollama（本地） | `http://localhost:11434/v1` | `qwen2.5:14b` |
-| vLLM（本地） | `http://localhost:8000/v1` | 你部署的模型名 |
-| 其他网关 | 任意 OpenAI 兼容地址 | 以服务商文档为准 |
-
-```bash
-LLM_BASE_URL=https://api.openai.com/v1 LLM_MODEL=gpt-4.1 \
-LLM_API_KEY=sk-... node run.mjs "为「城市声音地图」做一张 1:1 方形海报，链接 https://example.com/sound"
-```
-
-> Claude、Gemini 的原生 API 协议不同，可通过 OpenAI 兼容网关接入，或自行替换运行器中的请求部分。模型不是工具的一部分，可随时替换。
-
-## 交付协议（硬约束）
+### 交付格式（硬约束）
 
 模型必须**只输出一个合法 JSON 对象**，前后不允许任何解释文字、Markdown 代码围栏或注释。顶层字段固定：
 
@@ -190,18 +192,33 @@ LLM_API_KEY=sk-... node run.mjs "为「城市声音地图」做一张 1:1 方形
 
 链接图片必须走「位图 → blob → `L.Image` → 画布」，禁止外链图片、`<img>` 或 CSS 背景图，避免污染画布导致导出失败。
 
+## 前端渲染组件
+
+[`appCode.vue`](./appCode.vue) 是平台运行时下的 Vue 单文件组件，负责从输入到成品的完整前端链路：
+
+- **输入**：作品描述、比例要求、链接、示例模板，`solo` 模式与嵌入模式自适应
+- **生成**：调用 `aigcInterface.streamRequest` 发起流式请求，展示加载进度与阶段提示，支持中止
+- **解析**：用 `WebTool.extractJSON` 提取 JSON，格式异常时提示并允许重试
+- **渲染**：把 `code` 交给结果面板渲染为海报画布，支持画布预览与错误面板
+- **版本**：历史版本列表、版本对比、切换与恢复
+- **编辑**：基于当前内容继续修改，生成新版本
+- **导出**：存档 HTML、下载 Markdown、导出图片、复制分享链接
+- **反馈**：内置问题反馈入口
+
+> 组件依赖 transweb 前端运行时与 serverless 接口，不是可以直接 `import` 到任意 Vue 工程的 npm 包；它的价值在于展示 AIGC 结果如何被解析、渲染和管理。
+
 ## 技术栈
 
 | 层 | 选型 |
 | --- | --- |
-| 生成引擎 | `appPrompt.md`（系统提示词）+ 任意 LLM |
-| 运行器 | 约 40 行 Node.js 脚本，仅用内置 `fetch` |
-| 渲染引擎 | LeaferJS 2.3.4 |
-| 可选依赖 | `qr` 模式加载 `https://transweb.cn/common/qr-code-styling.js` |
+| 本地入口 | 原生 HTML + iframe |
+| 前端组件 | Vue 单文件组件（Options API）、Element 组件库、Tailwind 原子类 |
+| AIGC 提示词 | Markdown 结构化提示词（`appPrompt.md`） |
+| AI 服务 | transweb.cn serverless，流式返回 |
+| 结果渲染 | LeaferJS 2.3.4 |
+| 可选依赖 | `qr` 模式加载公开的 `qr-code-styling` 脚本 |
 | 画布 | 短边 900 设计单位，`pixelRatio: 3`；`stage` 等比缩放居中 |
-| 图形 | `Rect`、`Ellipse`、`Polygon`、`Star`、`Text`、`Group`、`Image`（仅链接位图） |
-| 文字 | `fontSize` / `letterSpacing` / `lineHeight` 全部是像素（`lineHeight` 不是倍数） |
-| 产物 | 单文件 HTML，无构建、无框架、静态渲染 |
+| 结果存储 | transweb.cn 版本与历史记录 |
 
 LeaferJS 只允许引入一次：
 
@@ -209,88 +226,61 @@ LeaferJS 只允许引入一次：
 https://unpkg.com/leafer-ui@2.3.4/dist/web.min.js
 ```
 
-## 目录结构
+## 独立运行的边界
 
-```text
-LeaferJS-poster/
-├── appPrompt.md     # 工具引擎：完整系统提示词（必需）
-├── README.md        # 本文件
-├── appCode.vue      # 可选参考实现：平台端 UI（独立运行不需要）
-├── appPage.html     # 可选参考实现：iframe 嵌入页
-└── manifest.json    # 元数据
-```
+| 可以 | 不可以 |
+| --- | --- |
+| 本地双击或静态托管 `appPage.html` | 完全离线生成（需要 transweb.cn） |
+| 不安装 Node.js、不构建、不部署后端 | 自带模型或本地模型直接推理 |
+| 浏览器内完成输入、渲染、版本、图片导出 | 不依赖账号/额度无限调用 |
+| 把生成的海报 HTML 单独保存、分享 | 直接修改 `appPrompt.md` 就让线上生效 |
 
-`run.mjs` 不在仓库内，按「快速开始」创建即可；`appCode.vue` 与 `appPage.html` 只是同款提示词在 transweb.cn 上的 Web 外壳，**不参与**独立运行链路，删掉它们不影响工具使用。
-
-## 设计标准摘要
-
-### 社交货币十准则
-
-1. **作品优先**：画作品本身，不画 AI 技术。
-2. **非凡优先**：只放大最值得惊叹的一处，其余卖点删掉。
-3. **身份表达**：版面克制、细节精确、作者清楚。
-4. **差异化**：按作品气质选风格，不套模板。
-5. **视觉证据**：画真实产物、交互帧、数字；界面作品做几何重构而非贴截图。
-6. **情绪驱动**：主视觉只制造一种情绪。
-7. **故事传播**：让人能用一句话说清「把什么变成什么」。
-8. **荣誉可视化**：真实数据才转成编号、计数、日期、刻度。
-9. **低成本分享**：标题、描述、作者、链接四件套完整。
-10. **品牌一致**：同一作者共享边距、字体与展签基因。
-
-### 版面纪律
-
-- 标题下沿与主视觉上沿 ≥ 24；主视觉下沿与描述上沿 ≥ 36。
-- 边距固定 72；竖版 6 栏、栏距 24；基线单位 12。
-- 主视觉可破格、可出血，文字不可以。
-- 没有链接时删掉展签与扫码提示，空出的右下保持安静。
-- 一个主视觉、一个视觉入口、一个记忆点；同时存在的视觉重点不超过两个。
-
-### 设计反模式（命中即改）
-
-- 机器人、芯片、大脑、电路板、蓝紫霓虹、发光粒子、悬浮玻璃卡片、手机 mockup。
-- 纯黑 `#000` / 纯白 `#fff`（链接展签卡除外）、彩虹渐变、五个以上色相。
-- 贴界面截图冒充主视觉；编造数据；把标题当说明书。
-- 每张海报都套同一种风格；用装饰填满留白。
+如果要把 AI 能力迁到自己的基础设施，需要实现与 `aigcInterface` 兼容的流式接口，或把提示词接入自己的模型网关；这部分不在本仓库内。
 
 ## 交付验收清单
 
-- [ ] `code` 源码内双引号数量为 0、反斜杠数量为 0
+- [ ] 打开 `appPage.html` 能看到应用界面，而不是白屏
+- [ ] 输入作品描述后能看到流式生成状态
 - [ ] 画布比例与需求一致，误差 ≤ 1 设计单位
 - [ ] 短边 ≥ 900 设计单位，`pixelRatio: 3`
-- [ ] 所有视觉元素都在 canvas 内
 - [ ] 主视觉第一眼可辨，且只承担一个隐喻
 - [ ] 标题逐字使用作品名，断行合理，无孤字
-- [ ] 描述、作者、展签位置符合版面锚点
 - [ ] `qr` 二维码可扫描且指向用户链接；`hero` / `slot` 图片未裁切变形
-- [ ] 文字对比度达标，未缩字
-- [ ] 无 `requestAnimationFrame`、无动画、无页面级 UI
-- [ ] 无控制台异常、无 404 资源
+- [ ] 历史版本可切换，编辑后可生成新版本
+- [ ] 存档 HTML、下载 Markdown、导出图片可用
+- [ ] 网络异常或服务不可用时有明确提示
 
 ## 常见问题
 
+**打开 `appPage.html` 一直白屏或转圈？**
+先确认能访问 `https://transweb.cn`，再打开浏览器控制台看 iframe 是否被拦截。必要时改用本地静态服务（见「运行方式」），或直接访问在线应用地址。
+
+**需要安装 Node.js 或 npm 吗？**
+不需要。项目没有构建步骤；本地静态服务只是可选的更稳妥的打开方式。
+
 **怎么导出 PNG / JPG？**
-本页面不提供下载按钮，导出由截图完成。用浏览器开发者工具的设备像素比或系统截图工具截取画布区域即可；画布本身已是 3 倍像素密度。
+使用结果面板的图片导出，或直接截取画布区域；画布本身已是 3 倍像素密度。导出由前端完成。
 
 **没有链接也能用吗？**
 可以。没有链接时不加载二维码库、不画二维码，右下区域保持留白。
 
-**二维码为什么需要联网？**
-`qr` 模式会加载一个公开的 `qr-code-styling` 脚本（默认地址在 `transweb.cn`，可自行镜像）。完全离线时把该脚本下载到本地静态目录并替换地址即可。
+**可以离线使用吗？**
+不能离线生成。生成的海报 HTML 可以保存到本地查看，但 `qr` 模式会加载二维码脚本；需要完全离线时，可把脚本下载到本地并替换地址。
 
-**可以商用吗？**
-本仓库暂未声明许可证。提示词与生成代码的版权归各自作者所有，商用前请自行确认授权范围。
+**能换成自己的模型吗？**
+可以，但需要替换 `aigcInterface` 适配层或自建兼容的 serverless 服务，并自行实现流式协议。仓库不包含这部分实现。
 
-## 参考实现（可选）
-
-- 在线效果参考：<https://transweb.cn/agent.html?id=c19fca2dd60e295a12948cd241fb5b23>
-- `appPage.html` 通过 iframe 嵌入同一在线版本；它只用于预览，不是运行本工具的必要条件。
+**为什么改了 `appPrompt.md` 线上没变化？**
+线上应用读取的是平台侧绑定的提示词配置；仓库里的文件是提示词契约与版本记录。要生效，需要在平台更新配置，或接入你自建的生成服务。
 
 ## 相关链接
 
+- 在线应用：<https://transweb.cn/agent.html?id=c19fca2dd60e295a12948cd241fb5b23>
+- 本地入口：[`appPage.html`](./appPage.html)
 - LeaferJS 官网：<https://www.leaferjs.com/>
 - LeaferJS 文档：<https://www.leaferjs.com/ui/guide/>
 - 本仓库：<https://github.com/liuwenjin/LeaferJS-poster>
 
 ## 许可
 
-本仓库暂未指定开源许可证。提示词文本与生成的海报代码版权归各自作者所有；使用前请自行确认授权范围。
+本仓库暂未指定开源许可证。提示词文本、前端组件与生成代码版权归各自作者所有；使用前请自行确认授权范围。
